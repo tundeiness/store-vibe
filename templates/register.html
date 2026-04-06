@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Create Account — Sole Store{% endblock %}
+
+{% block extra_head %}
+<style>
+  .auth-wrapper {
+    min-height: calc(100vh - 64px);
+    background: var(--black);
+    display: grid; grid-template-columns: 1fr 1fr;
+  }
+  .auth-visual { position: relative; overflow: hidden; }
+  .auth-visual img { width: 100%; height: 100%; object-fit: cover; opacity: .5; }
+  .auth-visual-overlay {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    padding: 3rem;
+  }
+  .auth-visual-title {
+    font-family: var(--font-display);
+    font-size: 4rem; letter-spacing: 2px; color: var(--white); line-height: 1;
+  }
+  .auth-visual-title span { color: var(--accent); }
+  .auth-visual-sub { color: rgba(255,255,255,.6); margin-top: .5rem; }
+
+  .auth-form-side {
+    display: flex; align-items: center; justify-content: center;
+    padding: 3rem 2rem; overflow-y: auto;
+  }
+  .auth-box {
+    width: 100%; max-width: 420px;
+    background: var(--white); border-radius: var(--radius);
+    padding: 2.5rem;
+  }
+  .auth-title { font-family: var(--font-display); font-size: 2rem; letter-spacing: 1px; margin-bottom: .25rem; }
+  .auth-sub { font-size: .875rem; color: var(--gray); margin-bottom: 2rem; }
+  .auth-sub a { font-weight: 700; color: var(--black); }
+
+  .perks-list { list-style: none; display: flex; flex-direction: column; gap: .5rem; margin-top: 1.5rem; }
+  .perks-list li { font-size: .82rem; color: var(--gray); display: flex; gap: .5rem; }
+
+  @media (max-width: 768px) {
+    .auth-wrapper { grid-template-columns: 1fr; }
+    .auth-visual { display: none; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+  <div class="auth-visual">
+    <img src="https://images.unsplash.com/photo-1460353581641-37baddab0fa2?w=900" alt="Shoes"/>
+    <div class="auth-visual-overlay">
+      <div class="auth-visual-title">JOIN THE<br><span>SOLE.</span> CREW</div>
+      <div class="auth-visual-sub">Members get early access, exclusive deals & more.</div>
+    </div>
+  </div>
+
+  <div class="auth-form-side">
+    <div class="auth-box">
+      <h1 class="auth-title">CREATE ACCOUNT</h1>
+      <p class="auth-sub">Already have one? <a href="{{ url_for('auth.login') }}">Sign in</a></p>
+
+      <form action="{{ url_for('auth.register') }}" method="POST">
+        <div class="form-row">
+          <div class="form-group">
+            <label>First Name</label>
+            <input type="text" name="first_name" required placeholder="Jane">
+          </div>
+          <div class="form-group">
+            <label>Last Name</label>
+            <input type="text" name="last_name" required placeholder="Smith">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" name="email" required placeholder="you@email.com">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" name="password" required placeholder="Min 8 characters" minlength="8">
+        </div>
+        <button type="submit" class="btn btn-accent w-full" style="margin-top:.5rem;">Create Account →</button>
+      </form>
+
+      <ul class="perks-list">
+        <li>✓ Free shipping on first order</li>
+        <li>✓ Early access to new drops</li>
+        <li>✓ Order tracking & history</li>
+        <li>✓ Saved shipping addresses</li>
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

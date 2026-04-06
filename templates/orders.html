@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}My Orders — Sole Store{% endblock %}
+
+{% block extra_head %}
+<style>
+  .account-wrapper { background: var(--cream); min-height: calc(100vh - 64px); padding: 3rem 0; }
+  .account-grid { display: grid; grid-template-columns: 240px 1fr; gap: 2rem; }
+  .account-sidebar {
+    background: var(--white); border-radius: var(--radius); padding: 1.5rem;
+    align-self: start; box-shadow: var(--shadow);
+  }
+  .account-avatar {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: var(--black); color: var(--white);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display); font-size: 1.75rem; margin-bottom: 1rem;
+  }
+  .account-name { font-weight: 700; font-size: 1.1rem; }
+  .account-email { font-size: .8rem; color: var(--gray); margin-bottom: 1.5rem; }
+  .account-nav { list-style: none; display: flex; flex-direction: column; gap: .25rem; }
+  .account-nav a {
+    display: flex; align-items: center; gap: .6rem;
+    padding: .6rem .75rem; border-radius: var(--radius);
+    font-size: .9rem; font-weight: 500; transition: background .15s;
+  }
+  .account-nav a:hover { background: var(--light); }
+  .account-nav a.active { background: var(--black); color: var(--white); font-weight: 700; }
+
+  .orders-card {
+    background: var(--white); border-radius: var(--radius);
+    padding: 2rem; box-shadow: var(--shadow);
+  }
+  .orders-title {
+    font-family: var(--font-display); font-size: 2rem;
+    letter-spacing: 1px; margin-bottom: 1.5rem;
+    padding-bottom: .75rem; border-bottom: 2px solid var(--black);
+  }
+
+  .order-card {
+    border: 1px solid var(--light); border-radius: var(--radius);
+    margin-bottom: 1rem; overflow: hidden;
+  }
+  .order-card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1rem 1.5rem; background: var(--cream); flex-wrap: wrap; gap: .75rem;
+  }
+  .order-num { font-weight: 800; font-size: .95rem; }
+  .order-meta { font-size: .82rem; color: var(--gray); margin-top: .15rem; }
+  .order-status {
+    padding: .3rem .75rem; border-radius: 20px;
+    font-size: .75rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .08em;
+  }
+  .status-pending    { background: #fff3cd; color: #856404; }
+  .status-processing { background: #cce5ff; color: #004085; }
+  .status-shipped    { background: #d4edda; color: #155724; }
+  .status-delivered  { background: #d4edda; color: #155724; }
+  .status-cancelled  { background: #f8d7da; color: #721c24; }
+
+  .order-card-total { font-weight: 800; font-size: 1.1rem; }
+  .order-card-body { padding: 1rem 1.5rem; }
+  .order-items-count { font-size: .85rem; color: var(--gray); }
+
+  @media (max-width: 768px) {
+    .account-grid { grid-template-columns: 1fr; }
+    .account-sidebar { display: none; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="account-wrapper">
+  <div class="container">
+    <div class="account-grid">
+
+      <aside class="account-sidebar">
+        <div class="account-avatar">{{ session.get('user_name', 'U')[0].upper() }}</div>
+        <div class="account-name">{{ session.get('user_name', '') }}</div>
+        <div class="account-email"></div>
+        <ul class="account-nav">
+          <li><a href="{{ url_for('account.dashboard') }}">🏠 Dashboard</a></li>
+          <li><a href="{{ url_for('account.orders') }}" class="active">📦 My Orders</a></li>
+          <li><a href="{{ url_for('products.listing') }}">👟 Shop</a></li>
+          <li><a href="{{ url_for('auth.logout') }}">🚪 Logout</a></li>
+        </ul>
+      </aside>
+
+      <div class="orders-card">
+        <div class="orders-title">MY ORDERS ({{ orders|length }})</div>
+
+        {% if orders %}
+        {% for order in orders %}
+        <div class="order-card">
+          <div class="order-card-header">
+            <div>
+              <div class="order-num">{{ order.order_number }}</div>
+              <div class="order-meta">{{ order.created_at.strftime('%B %d, %Y at %I:%M %p') }}</div>
+            </div>
+            <span class="order-status status-{{ order.status }}">{{ order.status }}</span>
+            <div class="order-card-total">${{ "%.2f"|format(order.total) }}</div>
+          </div>
+          <div class="order-card-body">
+            <span class="order-items-count">{{ order.item_count }} item{{ 's' if order.item_count != 1 }}</span>
+            &bull;
+            <span class="order-items-count">Shipped to: {{ order.shipping_city }}, {{ order.shipping_state }}</span>
+          </div>
+        </div>
+        {% endfor %}
+
+        {% else %}
+        <div style="text-align:center; padding:4rem 0; color:var(--gray);">
+          <div style="font-size:4rem; margin-bottom:1rem;">📦</div>
+          <p style="font-size:1.1rem; margin-bottom:1.5rem;">No orders yet!</p>
+          <a href="{{ url_for('products.listing') }}" class="btn btn-primary">Start Shopping</a>
+        </div>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

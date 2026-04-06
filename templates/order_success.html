@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}Order Confirmed — Sole Store{% endblock %}
+
+{% block extra_head %}
+<style>
+  .success-hero {
+    background: var(--black); color: var(--white);
+    padding: 5rem 0; text-align: center;
+  }
+  .success-icon {
+    width: 100px; height: 100px; border-radius: 50%;
+    background: #1a7f4b; color: #fff;
+    font-size: 3rem; display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 2rem;
+    animation: popIn .5s cubic-bezier(.175,.885,.32,1.275);
+  }
+  @keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
+  .success-title { font-family: var(--font-display); font-size: 4rem; letter-spacing: 2px; margin-bottom: .5rem; }
+  .success-sub { color: rgba(255,255,255,.6); font-size: 1.1rem; }
+  .order-num {
+    display: inline-block; background: var(--accent);
+    color: #fff; padding: .4rem 1.25rem; border-radius: var(--radius);
+    font-weight: 800; letter-spacing: .1em; font-size: 1rem; margin-top: 1rem;
+  }
+
+  .confirmation-body { max-width: 800px; margin: 0 auto; padding: 4rem 2rem; }
+
+  .conf-card {
+    background: #fff; border: 1px solid var(--light); border-radius: var(--radius);
+    padding: 2rem; margin-bottom: 2rem;
+    box-shadow: var(--shadow);
+  }
+  .conf-title {
+    font-family: var(--font-display); font-size: 1.5rem;
+    letter-spacing: 1px; margin-bottom: 1.5rem;
+    padding-bottom: .75rem; border-bottom: 2px solid var(--black);
+  }
+
+  .order-item-row {
+    display: flex; gap: 1rem; align-items: center;
+    padding: 1rem 0; border-bottom: 1px solid var(--light);
+  }
+  .order-item-row:last-child { border-bottom: none; }
+  .order-item-row img {
+    width: 70px; height: 70px; object-fit: cover;
+    border-radius: var(--radius); background: var(--cream);
+  }
+  .oir-info { flex: 1; }
+  .oir-name { font-weight: 700; }
+  .oir-meta { font-size: .85rem; color: var(--gray); }
+  .oir-price { font-weight: 800; }
+
+  .addr-block { font-size: .95rem; line-height: 1.8; }
+
+  .status-pill {
+    display: inline-block; padding: .35rem 1rem; border-radius: 20px;
+    font-size: .8rem; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .1em;
+    background: #fff3cd; color: #856404;
+  }
+
+  .totals-block { display: flex; flex-direction: column; gap: .6rem; }
+  .total-row { display: flex; justify-content: space-between; font-size: .95rem; }
+  .total-row.grand { font-size: 1.2rem; font-weight: 800; border-top: 2px solid var(--black); padding-top: .75rem; margin-top: .25rem; }
+
+  .cta-row { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="success-hero">
+  <div class="success-icon">✓</div>
+  <h1 class="success-title">ORDER CONFIRMED!</h1>
+  <p class="success-sub">Thank you for your purchase. We're getting your shoes ready.</p>
+  <div class="order-num">{{ order.order_number }}</div>
+</div>
+
+<div class="confirmation-body">
+
+  <!-- ORDER ITEMS -->
+  <div class="conf-card">
+    <div class="conf-title">ITEMS ORDERED</div>
+    {% for item in items %}
+    <div class="order-item-row">
+      <div class="oir-info">
+        <div class="oir-name">{{ item.product_name }}</div>
+        <div class="oir-meta">Size: US {{ item.size }} &bull; Qty: {{ item.quantity }}</div>
+      </div>
+      <div class="oir-price">${{ "%.2f"|format(item.total_price) }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- TOTALS + SHIPPING SIDE BY SIDE -->
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
+
+    <div class="conf-card">
+      <div class="conf-title">ORDER TOTAL</div>
+      <div class="totals-block">
+        <div class="total-row"><span>Subtotal</span><span>${{ "%.2f"|format(order.subtotal) }}</span></div>
+        <div class="total-row">
+          <span>Shipping</span>
+          <span>{{ 'FREE' if order.shipping_cost == 0 else '$%.2f'|format(order.shipping_cost) }}</span>
+        </div>
+        <div class="total-row"><span>Tax</span><span>${{ "%.2f"|format(order.tax) }}</span></div>
+        <div class="total-row grand"><span>Total</span><span>${{ "%.2f"|format(order.total) }}</span></div>
+      </div>
+    </div>
+
+    <div class="conf-card">
+      <div class="conf-title">SHIPPING TO</div>
+      <div class="addr-block">
+        <strong>{{ order.shipping_name }}</strong><br>
+        {{ order.shipping_street }}<br>
+        {{ order.shipping_city }}, {{ order.shipping_state }} {{ order.shipping_zip }}<br>
+        {{ order.shipping_country }}
+      </div>
+      <div style="margin-top:1rem;">
+        <div style="font-size:.8rem; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--gray); margin-bottom:.4rem;">Order Status</div>
+        <span class="status-pill">{{ order.status.capitalize() }}</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- CTA -->
+  <div class="cta-row" style="margin-top:1rem;">
+    <a href="{{ url_for('products.listing') }}" class="btn btn-primary btn-lg">Continue Shopping</a>
+    {% if session.get('user_id') %}
+    <a href="{{ url_for('account.orders') }}" class="btn btn-outline btn-lg">View My Orders</a>
+    {% endif %}
+  </div>
+
+  <p style="text-align:center; color:var(--gray); font-size:.85rem; margin-top:2rem;">
+    A confirmation will be sent to <strong>{{ order.guest_email }}</strong>.
+    Estimated delivery: <strong>3–5 business days</strong>.
+  </p>
+</div>
+{% endblock %}

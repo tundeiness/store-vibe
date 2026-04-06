@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}Shop All Shoes — Sole Store{% endblock %}
+
+{% block extra_head %}
+<style>
+  .page-header {
+    background: var(--black); color: var(--white);
+    padding: 3rem 0;
+  }
+  .page-header h1 { font-family: var(--font-display); font-size: 3.5rem; letter-spacing: 2px; }
+  .page-header p { color: rgba(255,255,255,.5); margin-top: .5rem; }
+
+  .shop-layout {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 2.5rem;
+    padding: 2.5rem 0;
+  }
+
+  /* Sidebar */
+  .sidebar { position: sticky; top: 80px; align-self: start; }
+  .filter-block { margin-bottom: 2rem; }
+  .filter-title {
+    font-size: .75rem; font-weight: 800; letter-spacing: .15em;
+    text-transform: uppercase; margin-bottom: 1rem;
+    padding-bottom: .5rem; border-bottom: 2px solid var(--black);
+  }
+  .filter-list { list-style: none; display: flex; flex-direction: column; gap: .4rem; }
+  .filter-list a {
+    font-size: .9rem; padding: .35rem .6rem;
+    border-radius: var(--radius);
+    display: flex; justify-content: space-between;
+    transition: background .15s;
+  }
+  .filter-list a:hover { background: var(--light); }
+  .filter-list a.active { background: var(--black); color: var(--white); font-weight: 700; }
+  .price-range { display: flex; gap: .5rem; align-items: center; }
+  .price-range input { width: 80px; }
+
+  /* Products area */
+  .products-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;
+  }
+  .results-count { font-size: .9rem; color: var(--gray); }
+  .sort-select {
+    border: 1.5px solid var(--light); padding: .5rem .9rem;
+    border-radius: var(--radius); font-size: .875rem;
+    width: auto;
+  }
+
+  /* Pagination */
+  .pagination { display: flex; gap: .5rem; justify-content: center; margin-top: 3rem; }
+  .page-btn {
+    width: 40px; height: 40px; border-radius: var(--radius);
+    border: 1.5px solid var(--light);
+    display: flex; align-items: center; justify-content: center;
+    font-size: .875rem; font-weight: 700; transition: all .2s;
+  }
+  .page-btn:hover { border-color: var(--black); background: var(--black); color: var(--white); }
+  .page-btn.active { background: var(--black); color: var(--white); border-color: var(--black); }
+
+  .empty-state { text-align: center; padding: 5rem 2rem; }
+  .empty-state h2 { font-family: var(--font-display); font-size: 3rem; margin-bottom: 1rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="container">
+    <h1>SHOP ALL SHOES</h1>
+    <p>{{ total }} products found</p>
+  </div>
+</div>
+
+<div class="container">
+  <div class="shop-layout">
+
+    <!-- SIDEBAR FILTERS -->
+    <aside class="sidebar">
+      <form method="GET" action="{{ url_for('products.listing') }}" id="filter-form">
+
+        <div class="filter-block">
+          <div class="filter-title">Category</div>
+          <ul class="filter-list">
+            <li><a href="{{ url_for('products.listing', brand=current_brand, sort=current_sort) }}"
+                   class="{{ 'active' if not current_category }}">All</a></li>
+            {% for cat in categories %}
+            <li>
+              <a href="{{ url_for('products.listing', category=cat.slug, brand=current_brand, sort=current_sort) }}"
+                 class="{{ 'active' if current_category == cat.slug }}">
+                {{ cat.name }}
+              </a>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+
+        <div class="filter-block">
+          <div class="filter-title">Brand</div>
+          <ul class="filter-list">
+            <li><a href="{{ url_for('products.listing', category=current_category, sort=current_sort) }}"
+                   class="{{ 'active' if not current_brand }}">All Brands</a></li>
+            {% for b in brands %}
+            <li>
+              <a href="{{ url_for('products.listing', category=current_category, brand=b, sort=current_sort) }}"
+                 class="{{ 'active' if current_brand == b }}">{{ b }}</a>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+
+        <div class="filter-block">
+          <div class="filter-title">Price Range</div>
+          <div class="price-range">
+            <input type="number" name="min_price" placeholder="Min" value="{{ min_price if min_price else '' }}" min="0" style="width:80px">
+            <span>—</span>
+            <input type="number" name="max_price" placeholder="Max" value="{{ max_price if max_price else '' }}" min="0" style="width:80px">
+          </div>
+          <input type="hidden" name="category" value="{{ current_category }}">
+          <input type="hidden" name="brand" value="{{ current_brand }}">
+          <input type="hidden" name="sort" value="{{ current_sort }}">
+          <button type="submit" class="btn btn-primary w-full mt-2">Apply</button>
+        </div>
+
+      </form>
+    </aside>
+
+    <!-- PRODUCTS -->
+    <div>
+      <div class="products-header">
+        <span class="results-count">{{ total }} results</span>
+        <select class="sort-select" onchange="window.location=this.value">
+          {% set base = url_for('products.listing', category=current_category, brand=current_brand) %}
+          <option value="{{ base }}&sort=featured"  {{ 'selected' if current_sort == 'featured' }}>Featured</option>
+          <option value="{{ base }}&sort=newest"    {{ 'selected' if current_sort == 'newest' }}>Newest</option>
+          <option value="{{ base }}&sort=price_asc" {{ 'selected' if current_sort == 'price_asc' }}>Price: Low–High</option>
+          <option value="{{ base }}&sort=price_desc"{{ 'selected' if current_sort == 'price_desc' }}>Price: High–Low</option>
+          <option value="{{ base }}&sort=rating"    {{ 'selected' if current_sort == 'rating' }}>Top Rated</option>
+        </select>
+      </div>
+
+      {% if products %}
+      <div class="grid-4">
+        {% for p in products %}
+        <a href="{{ url_for('products.detail', slug=p.slug) }}" class="product-card">
+          <div class="product-card-img">
+            <img src="{{ p.image_url }}" alt="{{ p.name }}" loading="lazy"/>
+            {% if p.is_new  %}<span class="product-badge badge-new">New</span>{% endif %}
+            {% if p.is_sale %}<span class="product-badge badge-sale">Sale</span>{% endif %}
+          </div>
+          <div class="product-card-body">
+            <div class="product-brand">{{ p.brand }}</div>
+            <div class="product-name">{{ p.name }}</div>
+            <div class="product-rating">
+              <span class="stars">★★★★★</span>
+              <span>{{ "%.1f"|format(p.rating) }} ({{ p.review_count }})</span>
+            </div>
+            <div class="product-price">
+              <span class="price-current {% if p.is_sale %}price-sale{% endif %}">${{ "%.2f"|format(p.price) }}</span>
+              {% if p.original_price %}<span class="price-original">${{ "%.2f"|format(p.original_price) }}</span>{% endif %}
+            </div>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+
+      <!-- Pagination -->
+      {% if total_pages > 1 %}
+      <div class="pagination">
+        {% for i in range(1, total_pages + 1) %}
+        <a href="{{ url_for('products.listing', category=current_category, brand=current_brand, sort=current_sort, page=i) }}"
+           class="page-btn {{ 'active' if i == page }}">{{ i }}</a>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% else %}
+      <div class="empty-state">
+        <h2>NO SHOES FOUND</h2>
+        <p style="color:var(--gray); margin-bottom:2rem;">Try adjusting your filters.</p>
+        <a href="{{ url_for('products.listing') }}" class="btn btn-primary">Clear Filters</a>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+{% endblock %}

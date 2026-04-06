@@ -1,0 +1,101 @@
+# ============================================================
+# Sole Store — Docker Compose (local + production-like)
+# Usage:
+#   docker compose up --build          # first run
+#   docker compose up -d               # background
+#   docker compose down -v             # stop + delete volumes
+# ============================================================
+
+services:
+
+  # ── Flask app ─────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: sole_store_app
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      # Flask
+      FLASK_ENV: production
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      # MySQL — points to the 'db' service below
+      MYSQL_HOST: db
+      MYSQL_PORT: 3306
+      MYSQL_USER: ${MYSQL_USER:-soleuser}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-solepass}
+      MYSQL_DB: ${MYSQL_DB:-sole_store}
+      # Redis — points to the 'redis' service below
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - sole_net
+    volumes:
+      # Mount source for live reload in development
+      # Comment out in production for immutable containers
+      - ./app.py:/app/app.py:ro
+      - ./routes:/app/routes:ro
+      - ./utils:/app/utils:ro
+      - ./templates:/app/templates:ro
+
+  # ── MySQL ─────────────────────────────────────────────────
+  db:
+    image: mysql:8.0
+    container_name: sole_store_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpass}
+      MYSQL_DATABASE: ${MYSQL_DB:-sole_store}
+      MYSQL_USER: ${MYSQL_USER:-soleuser}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-solepass}
+    ports:
+      - "3307:3306"       # 3307 on host to avoid conflict with local MySQL
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost",
+             "-u", "root", "--password=${MYSQL_ROOT_PASSWORD:-rootpass}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - sole_net
+
+  # ── Redis ─────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: sole_store_redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --maxmemory 128mb
+      --maxmemory-policy allkeys-lru
+      --save ""
+    ports:
+      - "6380:6379"       # 6380 on host to avoid conflict with local Redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - sole_net
+
+networks:
+  sole_net:
+    driver: bridge
+
+volumes:
+  db_data:
+    driver: local

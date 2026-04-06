@@ -19,16 +19,14 @@ services:
     ports:
       - "5000:5000"
     environment:
-      # Flask
       FLASK_ENV: production
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
-      # MySQL — points to the 'db' service below
+      # Always connect as root inside Docker
       MYSQL_HOST: db
       MYSQL_PORT: 3306
-      MYSQL_USER: ${MYSQL_USER:-soleuser}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-solepass}
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpass}
       MYSQL_DB: ${MYSQL_DB:-sole_store}
-      # Redis — points to the 'redis' service below
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
@@ -40,14 +38,14 @@ services:
     networks:
       - sole_net
     volumes:
-      # Mount source for live reload in development
-      # Comment out in production for immutable containers
       - ./app.py:/app/app.py:ro
       - ./routes:/app/routes:ro
       - ./utils:/app/utils:ro
       - ./templates:/app/templates:ro
 
   # ── MySQL ─────────────────────────────────────────────────
+  # NOTE: MYSQL_USER cannot be "root" — that's reserved for MYSQL_ROOT_PASSWORD.
+  # We connect as root from the app, so no separate MYSQL_USER is needed.
   db:
     image: mysql:8.0
     container_name: sole_store_db
@@ -55,10 +53,9 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpass}
       MYSQL_DATABASE: ${MYSQL_DB:-sole_store}
-      MYSQL_USER: ${MYSQL_USER:-soleuser}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-solepass}
+      # Do NOT set MYSQL_USER=root here — MySQL image forbids it
     ports:
-      - "3307:3306"       # 3307 on host to avoid conflict with local MySQL
+      - "3307:3306"
     volumes:
       - db_data:/var/lib/mysql
       - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
@@ -83,7 +80,7 @@ services:
       --maxmemory-policy allkeys-lru
       --save ""
     ports:
-      - "6380:6379"       # 6380 on host to avoid conflict with local Redis
+      - "6380:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s

@@ -114,8 +114,30 @@ docker compose down -v
 > **Note:** MySQL is exposed on host port `3307` and Redis on `6380` to avoid
 > clashing with any locally running instances. The Flask app is still on `5000`.
 
-> **Port conflict:** If port 5000 is already in use (e.g. a local Flask process),
-> stop it first: `lsof -ti :5000 | xargs kill -9`
+> **Port conflict — running Docker alongside a local Flask app:**
+> If port 5000 is already in use, change the host port in `docker-compose.yml`
+> so both can run at the same time:
+> ```yaml
+> ports:
+>   - "5001:5000"   # Docker app → http://127.0.0.1:5001
+>                   # Local app  → http://127.0.0.1:5000
+> ```
+> **Important:** when running both side-by-side, they use **separate databases**.
+> Local Flask talks to your machine's MySQL (`:3306`), Docker has its own isolated
+> MySQL in the `db_data` volume (`:3307`). Orders, accounts, and cart data do not
+> sync between them.
+>
+> Full port map when running both simultaneously:
+>
+> | Service | Local | Docker |
+> |---------|-------|--------|
+> | Flask app | http://127.0.0.1:5000 | http://127.0.0.1:5001 |
+> | MySQL | localhost:3306 | localhost:3307 |
+> | Redis | localhost:6379 | localhost:6380 |
+>
+> To switch Docker back to port 5000, stop the local process first —
+> `lsof -ti :5000 | xargs kill -9` — revert the port to `5000:5000`,
+> then `docker compose down && docker compose up -d`.
 
 ---
 
@@ -244,16 +266,18 @@ The app runs as a non-root user (`appuser`) inside the container for security.
 
 ## 🔧 Common Issues
 
-**Port 5000 already in use (local Flask process)**
-```bash
-lsof -ti :5000 | xargs kill -9
-```
-
-**Port 5000 already in use (Docker)**  
-Change the host port in `docker-compose.yml`:
+**Port 5000 already in use**
+If Docker and a local Flask app need to run simultaneously, change the host port
+in `docker-compose.yml` under the `app` service:
 ```yaml
 ports:
-  - "5001:5000"   # app now at http://127.0.0.1:5001
+  - "5001:5000"   # Docker → http://127.0.0.1:5001
+                  # Local  → http://127.0.0.1:5000
+```
+Note that each runs against its own separate database — data does not sync.
+To kill a local Flask process blocking port 5000:
+```bash
+lsof -ti :5000 | xargs kill -9
 ```
 
 **`MYSQL_USER="root"` error in Docker**  

@@ -1,6 +1,7 @@
 # 👟 Sole Store — Full-Stack Shoe E-Commerce
 
-A complete shoe e-commerce application built with **Flask**, **MySQL**, and **Redis**.
+A complete shoe e-commerce application built with **Flask**, **MySQL**, and **Redis**.  
+Runs locally with a single script or as a fully containerised stack via Docker.
 
 ## 🗂 Project Structure
 
@@ -8,8 +9,11 @@ A complete shoe e-commerce application built with **Flask**, **MySQL**, and **Re
 sole_store/
 ├── app.py                  # Flask application factory & entry point
 ├── schema.sql              # MySQL schema + seed data (8 products, reviews)
-├── requirements.txt        # Python dependencies
+├── requirements.txt        # Python dependencies (incl. Gunicorn)
 ├── setup.sh                # One-command local setup script
+├── Dockerfile              # Multi-stage optimised Docker image
+├── docker-compose.yml      # Orchestrates app + MySQL + Redis containers
+├── .dockerignore           # Keeps Docker build context lean
 ├── .env.example            # Environment variable template
 │
 ├── routes/
@@ -43,52 +47,97 @@ sole_store/
 
 ## ⚙️ Prerequisites
 
+### To run locally (without Docker)
+
 | Tool | Version | Install |
 |------|---------|---------|
-| Python | 3.9+ | https://python.org |
+| Python | 3.10+ | https://python.org |
 | MySQL | 8.0+ | https://dev.mysql.com/downloads/ |
 | Redis | 6.0+ | https://redis.io/download |
 
-### Quick install on macOS (Homebrew)
+#### macOS (Homebrew)
 ```bash
 brew install mysql redis python
 brew services start mysql
 brew services start redis
 ```
 
-### Quick install on Ubuntu/Debian
+#### Ubuntu / Debian
 ```bash
 sudo apt update
 sudo apt install python3 python3-pip python3-venv mysql-server redis-server
 sudo systemctl start mysql redis-server
 ```
 
-### Quick install on Windows
+#### Windows
 - Python: https://python.org/downloads
 - MySQL: https://dev.mysql.com/downloads/installer/
-- Redis: https://github.com/tporadowski/redis/releases (Windows port)
+- Redis: https://github.com/tporadowski/redis/releases
+
+### To run with Docker
+
+| Tool | Install |
+|------|---------|
+| Docker Desktop | https://www.docker.com/products/docker-desktop |
+
+Docker bundles MySQL and Redis automatically — no separate installs needed.
 
 ---
 
 ## 🚀 Quick Start
 
-### Option A — Automated setup script (Linux/macOS)
+### Option A — Docker (recommended, no local MySQL/Redis needed)
+
+```bash
+cd sole_store
+
+# First run — builds the image, seeds the database, starts all services
+docker compose up --build
+```
+
+Open **http://127.0.0.1:5000**
+
+```bash
+# Run in background
+docker compose up -d
+
+# View live logs
+docker compose logs -f app
+
+# Stop all containers
+docker compose down
+
+# Stop and delete the database volume (full reset)
+docker compose down -v
+```
+
+> **Note:** MySQL is exposed on host port `3307` and Redis on `6380` to avoid
+> clashing with any locally running instances. The Flask app is still on `5000`.
+
+> **Port conflict:** If port 5000 is already in use (e.g. a local Flask process),
+> stop it first: `lsof -ti :5000 | xargs kill -9`
+
+---
+
+### Option B — Automated local script (macOS / Linux)
+
 ```bash
 cd sole_store
 bash setup.sh
 ```
-On first run it will create `.env` for you. Fill in your MySQL password, then run again.
+
+On first run it creates `.env` for you. Add your MySQL password, then run again.
 
 ---
 
-### Option B — Manual step-by-step
+### Option C — Manual local setup
 
-#### 1. Clone / navigate to the project
+#### 1. Navigate to the project
 ```bash
 cd sole_store
 ```
 
-#### 2. Create and activate virtual environment
+#### 2. Create and activate a virtual environment
 ```bash
 python3 -m venv venv
 source venv/bin/activate        # macOS/Linux
@@ -105,7 +154,7 @@ pip install -r requirements.txt
 ```bash
 cp .env.example .env
 ```
-Edit `.env` with your credentials:
+Edit `.env`:
 ```env
 SECRET_KEY=change-this-to-something-random-and-long
 
@@ -120,23 +169,23 @@ REDIS_PORT=6379
 REDIS_PASSWORD=
 ```
 
-#### 5. Set up the database
+#### 5. Create and seed the database
 ```bash
 mysql -u root -p < schema.sql
 ```
-This creates the `sole_store` database with all tables and seed data (8 products, 4 categories, sample reviews).
+This creates `sole_store` with all tables and seed data (8 products, 4 categories, sample reviews).
 
-#### 6. Make sure Redis is running
+#### 6. Confirm Redis is running
 ```bash
 redis-cli ping    # Should return PONG
 ```
 
-#### 7. Run the app
+#### 7. Start the app
 ```bash
 python app.py
 ```
 
-Open your browser: **http://localhost:5000**
+Open **http://127.0.0.1:5000**
 
 ---
 
@@ -161,35 +210,64 @@ Open your browser: **http://localhost:5000**
 ## 🏗 Architecture
 
 ### Session & Cart — Redis
-The shopping cart is stored in the Flask session, which is persisted in **Redis** via `Flask-Session`. Each cart item is keyed by `{product_id}_{size}` to support multiple sizes of the same shoe.
+The shopping cart is stored in the Flask session, persisted in **Redis** via `Flask-Session`. Each cart item is keyed by `{product_id}_{size}` to support multiple sizes of the same shoe.
 
 ### Authentication
 Passwords are hashed with **PBKDF2-HMAC-SHA256** with a random salt (no external library needed). The `login_required` decorator redirects unauthenticated users.
 
 ### Database — MySQL
-Five core tables:
-- `users` — accounts
-- `products` + `categories` — catalog
-- `product_inventory` — per-size stock
-- `orders` + `order_items` — placed orders
-- `reviews` — product reviews
+Six core tables:
+
+| Table | Purpose |
+|-------|---------|
+| `users` | Accounts |
+| `categories` | Shoe categories |
+| `products` | Catalog |
+| `product_inventory` | Per-size stock levels |
+| `orders` + `order_items` | Placed orders |
+| `reviews` | Product reviews |
+
+### WSGI Server — Gunicorn
+In Docker, the app is served by **Gunicorn** (4 workers, 120s timeout) instead of Flask's development server. When running locally via `python app.py`, Flask's dev server is used with hot-reload enabled.
 
 ### Payment
-This is a **demo** app — no real payment gateway is integrated. The checkout form collects card details but does not process them. To add real payments, integrate **Stripe** or **PayPal** in `routes/checkout.py`.
+This is a **demo** app — no real payment gateway is integrated. The checkout form collects card details but does not process them. To add real payments, integrate **Stripe** in `routes/checkout.py`.
+
+### Docker — multi-stage build
+The `Dockerfile` uses two stages:
+- **builder** — installs `gcc` and compiles all Python packages (~400 MB, discarded)
+- **runtime** — copies only the compiled wheels into a slim image (~120 MB final size)
+
+The app runs as a non-root user (`appuser`) inside the container for security.
 
 ---
 
 ## 🔧 Common Issues
 
-**MySQL connection refused**
+**Port 5000 already in use (local Flask process)**
 ```bash
-sudo systemctl start mysql    # Linux
-brew services start mysql     # macOS
+lsof -ti :5000 | xargs kill -9
 ```
 
-**Redis connection refused**
+**Port 5000 already in use (Docker)**  
+Change the host port in `docker-compose.yml`:
+```yaml
+ports:
+  - "5001:5000"   # app now at http://127.0.0.1:5001
+```
+
+**`MYSQL_USER="root"` error in Docker**  
+The MySQL image forbids setting `MYSQL_USER=root` — root is managed by `MYSQL_ROOT_PASSWORD` only. The `docker-compose.yml` already handles this correctly; if you see this error, run `docker compose down -v` to wipe the old volume and try again.
+
+**MySQL connection refused (local)**
 ```bash
-redis-server --daemonize yes  # Start in background
+brew services start mysql     # macOS
+sudo systemctl start mysql    # Linux
+```
+
+**Redis connection refused (local)**
+```bash
+redis-server --daemonize yes
 ```
 
 **`pip install` fails on mysql-connector**
@@ -197,24 +275,34 @@ redis-server --daemonize yes  # Start in background
 pip install mysql-connector-python --no-cache-dir
 ```
 
-**Port 5000 already in use**
+**Reset the database (local)**
 ```bash
-python app.py  # Change port in app.py: app.run(port=5001)
+mysql -u root -p < schema.sql   # drops and recreates sole_store
 ```
+
+**Reset the database (Docker)**
+```bash
+docker compose down -v          # deletes db_data volume
+docker compose up --build       # recreates and re-seeds from schema.sql
+```
+
+**Browser shows "Access denied" on localhost:5000**  
+Use `http://127.0.0.1:5000` instead — some browsers block `localhost` due to HSTS settings.
 
 ---
 
 ## 🚢 Deploying to Production
 
-For production deployment:
+The Docker setup is already production-ready at the application layer. Additional steps for a real deployment:
 
-1. Set `FLASK_ENV=production` and use a strong `SECRET_KEY`
-2. Use **Gunicorn** as the WSGI server: `gunicorn -w 4 "app:create_app()"`
-3. Put **Nginx** in front as a reverse proxy
-4. Use a managed **MySQL** (PlanetScale, AWS RDS, etc.)
-5. Use a managed **Redis** (Redis Cloud, AWS ElastiCache, etc.)
-6. Serve static files via Nginx or a CDN
-7. Integrate a real payment gateway (Stripe recommended)
+1. Set a strong `SECRET_KEY` and `MYSQL_ROOT_PASSWORD` in your environment / secrets manager
+2. Replace `FLASK_ENV=production` (already set in `docker-compose.yml`)
+3. Put **Nginx** in front as a reverse proxy and TLS terminator
+4. Switch to a managed **MySQL** (PlanetScale, AWS RDS, Google Cloud SQL)
+5. Switch to a managed **Redis** (Redis Cloud, AWS ElastiCache, Upstash)
+6. Remove the source-code volume mounts from `docker-compose.yml` for immutable containers
+7. Integrate a real payment gateway (**Stripe** recommended) in `routes/checkout.py`
+8. Serve static files via Nginx or a CDN (CloudFront, Cloudflare)
 
 ---
 
@@ -223,8 +311,10 @@ For production deployment:
 | Layer | Technology |
 |-------|-----------|
 | Backend | Flask 3.0 |
+| WSGI Server | Gunicorn 21 (Docker) / Flask dev server (local) |
 | Database | MySQL 8 + mysql-connector-python |
-| Sessions / Cache | Redis + Flask-Session |
+| Sessions / Cache | Redis 7 + Flask-Session |
+| Containerisation | Docker (multi-stage) + Docker Compose |
 | Frontend | Jinja2 templates, vanilla CSS + JS |
 | Fonts | Bebas Neue + DM Sans (Google Fonts) |
 | Images | Unsplash (demo) |

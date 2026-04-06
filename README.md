@@ -1,4 +1,4 @@
-# 👟 Sole Store — Full-Stack Shoe E-Commerce
+# 👟 store-vibe — Full-Stack Shoe E-Commerce
 
 A complete shoe e-commerce application built with **Flask**, **MySQL**, and **Redis**.
 

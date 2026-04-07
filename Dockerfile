@@ -1,7 +1,7 @@
 
 # dependency builder
 
-FROM python:3.10-slim AS builder
+FROM python:3.10-alpine AS builder
 
 WORKDIR /build
 
@@ -21,7 +21,7 @@ RUN pip install --upgrade pip --quiet \
 
 
 
-FROM python:3.10-slim AS runtime
+FROM python:3.10-alpine AS runtime
 
 # Labels
 LABEL maintainer="sole-store"

@@ -95,7 +95,7 @@ cd sole_store
 docker compose up --build
 ```
 
-Open **http://127.0.0.1:5000**
+Open **http://127.0.0.1:5001**
 
 ```bash
 # Run in background

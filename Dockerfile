@@ -1,7 +1,7 @@
 
 # dependency builder
 
-FROM python:3.10-alpine AS builder
+FROM python:3.10-slim-bookworm AS builder
 
 WORKDIR /build
 
@@ -21,7 +21,7 @@ RUN pip install --upgrade pip --quiet \
 
 
 
-FROM python:3.10-alpine AS runtime
+FROM python:3.10-slim-bookworm AS runtime
 
 # Labels
 LABEL maintainer="sole-store"

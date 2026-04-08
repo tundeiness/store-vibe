@@ -3,6 +3,9 @@
 A complete shoe e-commerce application built with **Flask**, **MySQL**, and **Redis**.  
 Runs locally with a single script or as a fully containerised stack via Docker.
 
+![Landing Page](./images/Landing.png)
+![Registration Page](./images/Register.png)
+
 ## 🗂 Project Structure
 
 ```
